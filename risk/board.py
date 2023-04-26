@@ -1,6 +1,9 @@
 import os
 import random
 from collections import namedtuple
+from collections import deque
+from queue import PriorityQueue
+import copy
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -111,7 +114,21 @@ class Board(object):
         Returns:
             bool: True if the input path is valid
         '''
+        if not len(path) == len(set(path)): # no territory is repeated multiple times
+            return False
 
+        def go(xs):
+            if len(xs) <= 1: # valid paths of length 0 and 1
+                return True
+            # print("self.neighbors(xs[0])=", self.neighbors(xs[0]))
+            neighbors = list(self.neighbors(xs[0]))
+            neighbors = [neighbor.territory_id for neighbor in neighbors] # get neighbors
+            # print("neighbors=", neighbors)
+            if xs[1] in neighbors: # the next territory is in neighbors
+                return self.is_valid_path(xs[1:]) # for all territories in list
+            else:
+                return False
+        return go(path)
     
     def is_valid_attack_path(self, path):
         '''
@@ -130,6 +147,27 @@ class Board(object):
         Returns:
             bool: True if the path is an attack path
         '''
+        if not self.is_valid_path(path): # no territory is repeated multiple times
+            return False
+        if len(path) < 2:
+            return False
+        player = self.owner(path[0])
+        def go(xs): # valid paths of length 0 and 1
+            # print("self.neighbors(xs[0])=", self.neighbors(xs[0]))
+            if len(xs) <= 1:
+                return True
+            if self.owner(xs[1]) != player:
+                return go(xs[1:])
+            else:
+                return False
+        return go(path)
+            # neighbors = list(path[i].hostile_neighbors(player))
+            # neighbors = [neighbor.territory_id for neighbor in neighbors] # get neighbors
+            # print("neighbors=", neighbors)
+            # if path[i + 1] not in neighbors: # the next territory is in neighbors
+                #return False # for all territories in list
+        #else: 
+            #return True
 
 
     def cost_of_attack_path(self, path):
@@ -143,6 +181,11 @@ class Board(object):
         Returns:
             bool: the number of enemy armies in the path
         '''
+        cost = 0
+        newpath = path[1:]
+        for territory in newpath:
+            cost += self.armies(territory)
+        return cost
 
 
     def shortest_path(self, source, target):
@@ -161,6 +204,83 @@ class Board(object):
         Returns:
             [int]: a valid path between source and target that has minimum length; this path is guaranteed to exist
         '''
+        # Create a dictionary whose keys are territories and values are path
+        # Set dictionary[source] = [source]
+        # Create a queue
+        # Enqueue source onto the queue
+        # Create a set of visited territories
+        # Add source to the set
+
+        # While the queue is not empty
+            # Dequeue current_territory from the queue
+        #   If current_territory is the target
+                # return the dictionary[current_territory]
+            # For each territory in the neighbors of current_territory that is not in the visited set
+                # Make a copy of dictionary[current_territory]
+                # Push territory onto the copy
+                # Set dictionary[territory] = copy + territory
+                # Enqueue territory
+            # Add current_territory to the visited set
+        D = {}
+        for t_id in range(42):
+            D[t_id] = []
+        D[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+
+        while len(queue) != 0:
+            current_territory = queue.popleft()
+            print("current_territory=", current_territory)
+            if current_territory == target:
+                print("the winner is", D[current_territory])
+                return D[current_territory]
+            print("you lose")
+            for territory in self.neighbors(current_territory):
+                print("territory=", territory)
+                print("territory.territory_id=", territory.territory_id)
+                if territory.territory_id in visited:
+                    pass
+                else:
+                    copy_cur = copy.copy(D[current_territory])
+                    copy_cur.append(territory.territory_id)
+                    D[territory.territory_id] = copy_cur
+                    queue.append(territory.territory_id)
+                visited.add(territory.territory_id)
+            visited.add(current_territory)
+
+
+
+
+
+        '''with open(dictionary_file, 'r') as f:
+        test = f.read()
+    dictionary = test.splitlines()
+
+    if start_word == end_word:
+        return [start_word]
+
+    stack = []
+    stack.append(start_word)
+    queue = deque()
+    queue.append(stack)
+
+    while len(queue) != 0:
+        cur_stack = queue.popleft()
+        dict_copy = dictionary.copy()
+        for word in dict_copy:
+            if _adjacent(word, cur_stack[-1]):
+                if word == end_word:
+                    cur_stack.append(word)
+                    return cur_stack
+                stack_copy = copy.copy(cur_stack)
+                stack_copy.append(word)
+                queue.append(stack_copy)
+                dictionary = [x for x in dictionary if (x != word)]
+    return None'''
+
+
 
 
     def can_fortify(self, source, target):
@@ -176,6 +296,37 @@ class Board(object):
         Returns:
             bool: True if reinforcing the target from the source territory is a valid move
         '''
+        D = {}
+        for t_id in range(42):
+            D[t_id] = []
+        D[source] = [source]
+        queue = deque()
+        queue.append(source)
+        visited = set()
+        visited.add(source)
+
+        while len(queue) != 0:
+            current_territory = queue.popleft()
+            print("current_territory=", current_territory)
+            if current_territory == target:
+                print("the winner is", D[current_territory])
+                return True 
+            print("you lose")
+            for territory in self.friendly_neighbors(current_territory):
+                print("territory=", territory)
+                print("territory.territory_id=", territory.territory_id)
+                if territory.territory_id in visited:
+                    pass
+                else:
+                    copy_cur = copy.copy(D[current_territory])
+                    copy_cur.append(territory.territory_id)
+                    D[territory.territory_id] = copy_cur
+                    queue.append(territory.territory_id)
+                visited.add(territory.territory_id)
+            visited.add(current_territory)
+        return False
+
+
 
 
     def cheapest_attack_path(self, source, target):
@@ -191,6 +342,62 @@ class Board(object):
         Returns:
             [int]: a list of territory_ids representing the valid attack path; if no path exists, then it returns None instead
         '''
+        D = {}
+        #for t_id in range(42):
+            #D[t_id] = []
+        D[source] = [source]
+        queue = PriorityQueue()
+        queue.put((0, source))
+        visited = set()
+        visited.add(source)
+        player = self.owner(source)
+        if source == target:
+            return None
+        while not queue.empty():
+            tpl = queue.get()
+            current_territory = tpl[1]
+            print("current_territory=", current_territory)
+            if current_territory == target:
+                print("the winner is", D[current_territory])
+                return D[current_territory]
+            print("you lose")
+            for territory in self.neighbors(current_territory):
+                print("territory=", territory)
+                print("territory.territory_id=", territory.territory_id)
+                if territory.territory_id in visited or self.owner(territory.territory_id) == player:
+                    pass
+                else:
+                    copy_cur = copy.copy(D[current_territory])
+                    copy_cur.append(territory.territory_id)
+                    priority = tpl[0] + self.armies(territory.territory_id)
+                    # L = [item for item in queue.queue]
+                    # for i in range(len(L)):
+                        # if L[i][1] == territory.territory_id:
+                            # cur_priority = L[i][0]
+                            # break
+                        # else:
+                            # cur_priority = 0
+                    if territory.territory_id not in [item for p, item in queue.queue]:
+                        D[territory.territory_id] = copy_cur
+                        queue.put((priority, territory.territory_id)) 
+                    for p, item in queue.queue:
+                        if territory.territory_id == item:
+                            if priority < p:
+                                D[territory.territory_id] = copy_cur
+                                p = priority
+                    # elif priority < cur_priority:
+                        # D[territory.territory_id] = copy_cur
+                        # qcopy = queue.queue
+                        # for i in range(len(qcopy)):
+                            # if qcopy[i][1] == territory_id:
+                                # qcopy[i][0] = priority
+                                # break
+                        # queue = PriorityQueue()
+                        # for tpl in qcopy:
+                            # queue.put(tpl)
+                # visited.add(territory.territory_id)
+            visited.add(current_territory)
+
 
 
     def can_attack(self, source, target):
@@ -202,6 +409,10 @@ class Board(object):
         Returns:
             bool: True if a valid attack path exists between source and target; else False
         '''
+        if self.cheapest_attack_path(source, target):
+            return True
+        else:
+            return False
 
 
     # ======================= #
